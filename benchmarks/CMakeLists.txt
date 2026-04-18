@@ -1,0 +1,5 @@
+add_executable(sharded_lru_cache_bench
+  throughput_benchmark.cpp
+)
+
+target_link_libraries(sharded_lru_cache_bench PRIVATE sharded_lru_cache)

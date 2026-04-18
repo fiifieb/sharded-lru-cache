@@ -1,0 +1,7 @@
+add_executable(sharded_lru_cache_tests
+  sharded_lru_cache_tests.cpp
+)
+
+target_link_libraries(sharded_lru_cache_tests PRIVATE sharded_lru_cache)
+
+add_test(NAME sharded_lru_cache_tests COMMAND sharded_lru_cache_tests)
