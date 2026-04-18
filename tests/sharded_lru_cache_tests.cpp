@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "sharded_lru/cache_config.hpp"
 #include "sharded_lru/sharded_lru_cache.hpp"
@@ -145,6 +146,46 @@ void test_concurrent_strict_ordering_sequence() {
   assert(cache.contains("c"));
 }
 
+void test_concurrent_write_read_stress() {
+  sharded_lru::CacheConfig config{};
+  constexpr std::size_t thread_count = 8;
+  constexpr std::size_t keys_per_thread = 300;
+  config.capacity = thread_count * keys_per_thread;
+  config.shards = 1;
+
+  sharded_lru::ShardedLruCache<std::string, int> cache(config);
+
+  std::vector<std::thread> writers;
+  writers.reserve(thread_count);
+
+  for (std::size_t t = 0; t < thread_count; ++t) {
+    writers.emplace_back([t, &cache]() {
+      for (std::size_t i = 0; i < keys_per_thread; ++i) {
+        const std::string key = "t" + std::to_string(t) + ":" + std::to_string(i);
+        cache.put(key, static_cast<int>(i));
+        const auto value = cache.get(key);
+        assert(value.has_value());
+      }
+    });
+  }
+
+  for (auto& writer : writers) {
+    writer.join();
+  }
+
+  assert(cache.size() <= cache.capacity());
+  assert(cache.size() == thread_count * keys_per_thread);
+
+  for (std::size_t t = 0; t < thread_count; ++t) {
+    for (std::size_t i = 0; i < keys_per_thread; ++i) {
+      const std::string key = "t" + std::to_string(t) + ":" + std::to_string(i);
+      const auto value = cache.get(key);
+      assert(value.has_value());
+      assert(*value == static_cast<int>(i));
+    }
+  }
+}
+
 int main() {
   test_basic_put_get();
   test_strict_lru_ordering_single_shard();
@@ -152,6 +193,7 @@ int main() {
   test_erase_clear_and_size();
   test_invalid_zero_shards_throws();
   test_concurrent_strict_ordering_sequence();
+  test_concurrent_write_read_stress();
 
   return 0;
 }
