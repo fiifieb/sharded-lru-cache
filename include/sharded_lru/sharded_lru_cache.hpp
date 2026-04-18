@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <cassert>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -33,17 +34,19 @@ class ShardedLruCache {
     }
   }
 
-  bool put(const Key& key, Value value) {
+  [[nodiscard]] bool put(const Key& key, Value value) {
     return shards_[shard_index(key)]->put(key, std::move(value));
   }
 
-  std::optional<Value> get(const Key& key) {
+  [[nodiscard]] std::optional<Value> get(const Key& key) {
     return shards_[shard_index(key)]->get(key);
   }
 
-  bool erase(const Key& key) { return shards_[shard_index(key)]->erase(key); }
+  [[nodiscard]] bool erase(const Key& key) { return shards_[shard_index(key)]->erase(key); }
 
-  bool contains(const Key& key) const { return shards_[shard_index(key)]->contains(key); }
+  [[nodiscard]] bool contains(const Key& key) const {
+    return shards_[shard_index(key)]->contains(key);
+  }
 
   void clear() {
     for (const auto& shard : shards_) {
@@ -51,7 +54,7 @@ class ShardedLruCache {
     }
   }
 
-  std::size_t size() const {
+  [[nodiscard]] std::size_t size() const {
     std::size_t total = 0;
     for (const auto& shard : shards_) {
       total += shard->size();
@@ -59,12 +62,17 @@ class ShardedLruCache {
     return total;
   }
 
-  std::size_t capacity() const { return config_.capacity; }
+  [[nodiscard]] std::size_t capacity() const { return config_.capacity; }
 
-  std::size_t shard_count() const { return shards_.size(); }
+  [[nodiscard]] std::size_t shard_count() const { return shards_.size(); }
+
+  [[nodiscard]] bool empty() const { return size() == 0; }
 
  private:
-  std::size_t shard_index(const Key& key) const { return hasher_(key) % shards_.size(); }
+  std::size_t shard_index(const Key& key) const {
+    assert(!shards_.empty());
+    return hasher_(key) % shards_.size();
+  }
 
   CacheConfig config_;
   Hasher hasher_;

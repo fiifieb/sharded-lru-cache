@@ -28,14 +28,14 @@ void test_strict_lru_ordering_single_shard() {
   config.shards = 1;
 
   sharded_lru::ShardedLruCache<std::string, int> cache(config);
-  cache.put("a", 1);
-  cache.put("b", 2);
-  cache.put("c", 3);
+  (void)cache.put("a", 1);
+  (void)cache.put("b", 2);
+  (void)cache.put("c", 3);
 
   const auto a_hit = cache.get("a");
   assert(a_hit.has_value() && *a_hit == 1);
 
-  cache.put("d", 4);
+  (void)cache.put("d", 4);
 
   assert(cache.contains("a"));
   assert(!cache.contains("b"));
@@ -56,7 +56,7 @@ void test_overwrite_touches_recency() {
   const bool inserted = cache.put("a", 10);
   assert(!inserted);
 
-  cache.put("c", 3);
+  (void)cache.put("c", 3);
 
   assert(cache.contains("a"));
   assert(!cache.contains("b"));
@@ -70,9 +70,9 @@ void test_erase_clear_and_size() {
   config.shards = 1;
 
   sharded_lru::ShardedLruCache<std::string, int> cache(config);
-  cache.put("a", 1);
-  cache.put("b", 2);
-  cache.put("c", 3);
+  (void)cache.put("a", 1);
+  (void)cache.put("b", 2);
+  (void)cache.put("c", 3);
 
   assert(cache.size() == 3);
   assert(cache.erase("b"));
@@ -102,14 +102,30 @@ void test_invalid_zero_shards_throws() {
   assert(threw);
 }
 
+void test_zero_capacity_rejects_inserts() {
+  sharded_lru::CacheConfig config{};
+  config.capacity = 0;
+  config.shards = 4;
+
+  sharded_lru::ShardedLruCache<std::string, int> cache(config);
+  assert(cache.empty());
+  assert(cache.capacity() == 0);
+
+  const bool inserted = cache.put("a", 1);
+  assert(!inserted);
+  assert(cache.empty());
+  assert(cache.size() == 0);
+  assert(!cache.contains("a"));
+}
+
 void test_concurrent_strict_ordering_sequence() {
   sharded_lru::CacheConfig config{};
   config.capacity = 2;
   config.shards = 1;
 
   sharded_lru::ShardedLruCache<std::string, int> cache(config);
-  cache.put("a", 1);
-  cache.put("b", 2);
+  (void)cache.put("a", 1);
+  (void)cache.put("b", 2);
 
   std::atomic<int> turn{0};
 
@@ -139,7 +155,7 @@ void test_concurrent_strict_ordering_sequence() {
   first.join();
   second.join();
 
-  cache.put("c", 3);
+  (void)cache.put("c", 3);
 
   assert(!cache.contains("a"));
   assert(cache.contains("b"));
@@ -162,7 +178,7 @@ void test_concurrent_write_read_stress() {
     writers.emplace_back([t, &cache]() {
       for (std::size_t i = 0; i < keys_per_thread; ++i) {
         const std::string key = "t" + std::to_string(t) + ":" + std::to_string(i);
-        cache.put(key, static_cast<int>(i));
+        (void)cache.put(key, static_cast<int>(i));
         const auto value = cache.get(key);
         assert(value.has_value());
       }
@@ -192,6 +208,7 @@ int main() {
   test_overwrite_touches_recency();
   test_erase_clear_and_size();
   test_invalid_zero_shards_throws();
+  test_zero_capacity_rejects_inserts();
   test_concurrent_strict_ordering_sequence();
   test_concurrent_write_read_stress();
 

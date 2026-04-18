@@ -11,7 +11,7 @@ int main() {
 
   sharded_lru::ShardedLruCache<std::string, std::string> cache(config);
 
-  cache.put("user:42", "Alice");
+  (void)cache.put("user:42", "Alice");
   const auto value = cache.get("user:42");
 
   if (value.has_value()) {

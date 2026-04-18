@@ -51,6 +51,19 @@ A concurrent sharded LRU cache intended for high write throughput.
 - No global linearizability guarantee across all shards.
 - `size()` is an aggregate snapshot across shards (accurate at return time per shard read, not a global transaction boundary).
 
+### API Hardening Notes
+
+- Constructing with `shards = 0` throws `std::invalid_argument`.
+- `capacity = 0` is valid and behaves as a no-storage cache: inserts are rejected and size stays `0`.
+- `put`, `get`, `erase`, `contains`, `size`, `capacity`, and `shard_count` are `[[nodiscard]]` to reduce accidental ignored results.
+- `empty()` is available as a convenience for fast readability in callers.
+
+### Practical Limits
+
+- LRU order is exact within each shard only.
+- With `shards > 1`, total occupancy is bounded by global capacity, but per-shard hash skew can cause earlier evictions in hot shards.
+- For strict deterministic ordering assertions, use `shards = 1` in tests.
+
 ## Project Layout
 
 - `include/sharded_lru/`: public headers and internal detail headers.
@@ -65,3 +78,13 @@ cmake -S . -B build
 cmake --build build
 ctest --test-dir build --output-on-failure
 ```
+
+## Benchmark
+
+Run:
+
+```bash
+./build/benchmarks/sharded_lru_cache_bench
+```
+
+Current benchmark reports shard scaling for `1, 4, 16, 64` shards with write throughput (`ops_per_sec`).

@@ -32,7 +32,7 @@ int main() {
     for (std::size_t t = 0; t < threads; ++t) {
       workers.emplace_back([t, &cache]() {
         for (std::size_t i = 0; i < ops_per_thread; ++i) {
-          cache.put("key:" + std::to_string(t) + ":" + std::to_string(i), static_cast<int>(i));
+          (void)cache.put("key:" + std::to_string(t) + ":" + std::to_string(i), static_cast<int>(i));
         }
       });
     }
